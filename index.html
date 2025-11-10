@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Bonkers Quiz — v1.2</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ui-yellow:#FFD84A;
+    --ui-blue:#1A73E8;
+  }
+  html,body{height:100%;margin:0;background:#000;font-family:Fredoka, Arial, sans-serif;overflow:hidden}
+
+  /* Topbar */
+  #topbar { position:absolute; top:8px; left:12px; right:12px; z-index:120; display:flex; justify-content:space-between; align-items:center; pointer-events:none; }
+  .dots { display:flex; gap:8px; pointer-events:auto; }
+  .dot { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
+  .dot.active { background:var(--ui-yellow); box-shadow:0 6px 18px rgba(0,0,0,0.4); }
+  #muteBtn { pointer-events:auto; background: rgba(0,0,0,0.45); color:white; border:none; padding:8px; border-radius:8px; cursor:pointer; font-size:14px; }
+
+  /* Scenes */
+  .scene{ width:100%; height:100vh; position:relative; display:none; justify-content:center; align-items:center; overflow:hidden; }
+  video{ width:100%; height:100vh; object-fit:cover; display:block; }
+
+  /* overlays */
+  #tapToStart,#loader{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:200; color:white; text-align:center; }
+  #tapToStart { background: rgba(0,0,0,0.86); font-size:1.9rem; cursor:pointer; }
+  #loader { background: rgba(0,0,0,0.6); font-size:1.2rem; display:none; }
+
+  /* fade layer for scene switches */
+  #fadeLayer{ position:absolute; inset:0; background:black; z-index:190; transition:opacity 0.45s ease; pointer-events:none; opacity:0; }
+
+  /* Answer buttons group */
+  .answers { position:absolute; left:50%; transform:translateX(-50%); bottom:9%; width:86%; max-width:420px; display:flex; flex-direction:column; gap:12px; z-index:180; opacity:0; pointer-events:none; }
+  .answers.show { opacity:1; pointer-events:auto; transition:opacity .35s ease; }
+
+  .answer-btn {
+    background: rgba(255,255,255,0.96); border:3px solid #111; border-radius:18px;
+    padding:14px 18px; font-size:1.05rem; text-align:center; cursor:pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25); transition: transform .12s ease, box-shadow .15s ease;
+    user-select:none; transform-origin:center;
+  }
+
+  /* Desktop hover wonky */
+  @media (hover:hover) {
+    .answer-btn:hover { animation: wonkyHover 600ms infinite linear; box-shadow:0 12px 30px rgba(0,0,0,0.36); }
+  }
+  @keyframes wonkyHover {
+    0% { transform: rotate(-2deg) scale(1.04); }
+    25% { transform: rotate(2deg) scale(1.06); }
+    50% { transform: rotate(-1deg) scale(1.06); }
+    75% { transform: rotate(1.5deg) scale(1.04); }
+    100% { transform: rotate(-2deg) scale(1.04); }
+  }
+
+  /* tap pop animation */
+  @keyframes tapPop {
+    0% { transform: scale(1) rotate(0); }
+    50% { transform: scale(1.18) rotate(3deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+
+  /* staggered entry */
+  .answers.show .answer-btn { animation: fadeSlideUp .45s ease forwards; opacity:0; }
+  .answers.show .answer-btn:nth-child(1){ animation-delay: .08s; }
+  .answers.show .answer-btn:nth-child(2){ animation-delay: .18s; }
+  .answers.show .answer-btn:nth-child(3){ animation-delay: .28s; }
+  @keyframes fadeSlideUp { from { transform: translateY(18px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+
+  /* Results screen */
+  #resultsWrap { position:absolute; inset:0; display:none; z-index:300; align-items:center; justify-content:center; }
+  #resultsBg { position:absolute; inset:0; background-size:cover; background-position:center; filter: blur(6px) brightness(0.36); transform:scale(1.03); transition:filter .4s ease, transform .8s ease; }
+  #confettiCanvas { position:absolute; inset:0; z-index:305; pointer-events:none; }
+
+  .result-card { position:relative; z-index:310; width:min(760px,92%); max-width:900px; display:flex; gap:24px; align-items:center; justify-content:center; padding:26px; border-radius:18px; background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); box-shadow: 0 20px 60px rgba(0,0,0,0.6); backdrop-filter: blur(8px) saturate(1.1); border:1px solid rgba(255,255,255,0.06); color:white; }
+  .result-left { width:40%; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .result-left img.logo { width:110px; height:auto; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.45)); }
+  .result-right { width:60%; text-align:left; padding:6px 6px; }
+  #resultTitle { font-size:2rem; margin:0 0 6px 0; }
+  #resultText { margin:0; font-size:1.05rem; opacity:0.95; }
+  .bonkers { position:absolute; z-index:330; width:34%; max-width:320px; right:6%; bottom:6%; transform-origin:center bottom; pointer-events:none; }
+
+  #playAgain { appearance:none; border:none; margin-top:14px; background:linear-gradient(90deg,var(--ui-blue), #0b63d9); color:white; padding:12px 22px; border-radius:12px; font-weight:700; cursor:pointer; box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
+
+  @media (max-width:700px){
+    .result-card { flex-direction:column; padding:18px; gap:12px; }
+    .result-left, .result-right { width:100%; text-align:center; }
+    .bonkers{ width:46%; max-width:220px; right:4%; bottom:4%; }
+    #resultTitle{ font-size:1.4rem; }
+  }
+
+  .vimeoVid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div id="topbar">
+  <div class="dots">
+    <div class="dot" id="dot1"></div>
+    <div class="dot" id="dot2"></div>
+    <div class="dot" id="dot3"></div>
+  </div>
+  <button id="muteBtn" aria-pressed="false">🔊</button>
+</div>
+
+<!-- Tap / loader / fade -->
+<div id="tapToStart">▶ Tap to Start</div>
+<div id="loader">Loading…</div>
+<div id="fadeLayer"></div>
+
+<!-- Scenes (multiple video tags) -->
+<div id="scene0" class="scene">
+  <iframe id="vid0"
+  src="https://player.vimeo.com/video/1135059965?background=1&autoplay=1&muted=0&playsinline=1"
+  frameborder="0"
+  allow="autoplay; fullscreen; picture-in-picture"
+  allowfullscreen
+  class="vimeoVid">
+</iframe></div>
+<div id="scene1" class="scene">
+  <video id="vid1" src="01_kysymys.mp4" preload="auto"></video>
+  <div id="answers1" class="answers">
+    <div class="answer-btn wonky" data-type="winner">Wave my hand to fans</div>
+    <div class="answer-btn wonky" data-type="maybe">Don’t bother the crowd</div>
+    <div class="answer-btn wonky" data-type="disaster">Adopt a donkey</div>
+  </div>
+</div>
+
+<div id="scene2" class="scene">
+  <video id="vid2" src="02_kysymys.mp4" preload="auto"></video>
+  <div id="answers2" class="answers">
+    <div class="answer-btn wonky" data-type="maybe">Try on someone’s jersey</div>
+    <div class="answer-btn wonky" data-type="disaster">Challenge a bench to arm wrestling</div>
+    <div class="answer-btn wonky" data-type="winner">Quietly sneak out the door</div>
+  </div>
+</div>
+
+<div id="scene3" class="scene">
+  <video id="vid3" src="03_kysymys.mp4" preload="auto"></video>
+  <div id="answers3" class="answers">
+    <div class="answer-btn wonky" data-type="disaster">Unplug random cables</div>
+    <div class="answer-btn wonky" data-type="winner">Wait for your cue from the director</div>
+    <div class="answer-btn wonky" data-type="maybe">Start dancing—crowd noise is your cue</div>
+  </div>
+</div>
+
+<!-- Results -->
+<div id="resultsWrap" aria-hidden="true">
+  <div id="resultsBg"></div>
+  <canvas id="confettiCanvas"></canvas>
+
+  <div class="result-card" id="resultCard" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+    <div class="result-left">
+      <img src="AwesomeCrowd_Logo.png" alt="Awesome Crowd" class="logo" />
+      <div style="height:10px"></div>
+      <div id="smallBadge" style="font-weight:700; font-size:0.95rem; color:var(--ui-blue);">Bonkers Meltdown Quiz</div>
+    </div>
+
+    <div class="result-right">
+      <h2 id="resultTitle">Title</h2>
+      <p id="resultText">Text</p>
+      <div style="height:10px"></div>
+      <button id="playAgain">Play Again</button>
+    </div>
+  </div>
+
+  <img id="bonkersImg" class="bonkers" src="BonkersPoses_Neutral.png" alt="Bonkers">
+</div>
+
+<script>
+/* ------------- State & elements ------------- */
+let currentScene = -1; // no scene shown yet
+let scores = { winner:0, maybe:0, disaster:0 };
+const tap = document.getElementById('tapToStart');
+const loader = document.getElementById('loader');
+const fade = document.getElementById('fadeLayer');
+const muteBtn = document.getElementById('muteBtn');
+let muted = false;
+
+/* dots helper */
+function setDots(n){
+  document.querySelectorAll('.dot').forEach((d,i)=> d.classList.toggle('active', i < n));
+}
+
+/* ------------- Audio (single AudioContext) ------------- */
+let audioCtx = null;
+function ensureAudioCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function resumeAudioCtx(){ ensureAudioCtx(); if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{}); }
+
+/* small click sound */
+function playClick(){
+  if(muted) return;
+  resumeAudioCtx();
+  const ctx = audioCtx;
+  const now = ctx.currentTime;
+  const g = ctx.createGain(); g.connect(ctx.destination);
+  g.gain.value = 0;
+  const o = ctx.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(880, now);
+  o.connect(g);
+  g.gain.linearRampToValueAtTime(0.09, now+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, now+0.16);
+  o.start(now); o.stop(now+0.17);
+}
+
+/* result stingers */
+function playStinger(type){
+  if(muted) return;
+  resumeAudioCtx();
+  const ctx = audioCtx; const now = ctx.currentTime;
+  const g = ctx.createGain(); g.connect(ctx.destination); g.gain.value = 0;
+  if(type === 'winner'){
+    const o1 = ctx.createOscillator(); o1.type='sine'; o1.frequency.setValueAtTime(520, now);
+    const o2 = ctx.createOscillator(); o2.type='sine'; o2.frequency.setValueAtTime(780, now);
+    o1.connect(g); o2.connect(g);
+    g.gain.linearRampToValueAtTime(0.12, now+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+0.9);
+    o1.start(now); o2.start(now+0.06);
+    o1.stop(now+0.9); o2.stop(now+0.95);
+  } else if(type === 'maybe'){
+    const o = ctx.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(320, now);
+    o.connect(g);
+    g.gain.linearRampToValueAtTime(0.08, now+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+0.7);
+    o.start(now); o.stop(now+0.7);
+  } else if(type === 'disaster'){
+    const o = ctx.createOscillator(); o.type='square';
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 10;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value = 40;
+    lfo.connect(lfoGain); lfoGain.connect(o.frequency);
+    o.connect(g);
+    g.gain.linearRampToValueAtTime(0.14, now+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+1.2);
+    o.start(now); lfo.start(now);
+    o.frequency.setValueAtTime(600, now);
+    o.frequency.exponentialRampToValueAtTime(140, now+1.05);
+    o.stop(now+1.1); lfo.stop(now+1.1);
+  }
+}
+
+/* ------------- Confetti ------------- */
+const confettiCanvas = document.getElementById('confettiCanvas');
+const cctx = confettiCanvas.getContext('2d');
+function resizeCanvas(){ confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; }
+resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+
+let confettiParticles = [], confettiAnimating=false;
+function spawnConfetti(count=80){
+  const colors = ['#FFD84A','#FF6B6B','#4AE8FF','#9BFF7A','#FFD3A5','#FFFFFF'];
+  for(let i=0;i<count;i++){
+    confettiParticles.push({
+      x: Math.random()*confettiCanvas.width,
+      y: -Math.random()*200,
+      vx: (Math.random()-0.5)*6,
+      vy: 2 + Math.random()*4,
+      rot: Math.random()*360,
+      vr: (Math.random()-0.5)*12,
+      w: 8+Math.random()*12,
+      h: 10+Math.random()*18,
+      color: colors[Math.floor(Math.random()*colors.length)],
+      life: 350 + Math.random()*400
+    });
+  }
+  if(!confettiAnimating) startConfettiLoop();
+}
+function startConfettiLoop(){
+  confettiAnimating=true;
+  (function loop(){
+    cctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+    if(confettiParticles.length === 0){ confettiAnimating=false; return; }
+    for(let i=confettiParticles.length-1;i>=0;i--){
+      const p = confettiParticles[i];
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.vy += 0.06;
+      p.life--;
+      cctx.save(); cctx.translate(p.x,p.y); cctx.rotate(p.rot*Math.PI/180);
+      cctx.fillStyle = p.color; cctx.fillRect(-p.w/2, -p.h/2, p.w, p.h); cctx.restore();
+      if(p.y > confettiCanvas.height + 60 || p.life < 0) confettiParticles.splice(i,1);
+    }
+    requestAnimationFrame(loop);
+  })();
+}
+
+/* ------------- Scene logic ------------- */
+const scenes = [0,1,2,3];
+let lastFrameDataUrl = null;
+
+// helper to show a scene and play its video
+function playScene(n){
+  // clamp
+  if(n < 0) n = 0;
+  if(n > 3) n = 3;
+  // hide results if visible
+  document.getElementById('resultsWrap').style.display='none';
+  // hide other scenes
+  document.querySelectorAll('.scene').forEach(s=> s.style.display='none');
+  const sc = document.getElementById('scene'+n);
+  sc.style.display = 'flex';
+  const vid = document.getElementById('vid'+n);
+  vid.currentTime = 0;
+  // clear any filters
+  vid.style.filter = '';
+  vid.play().catch(()=>{});
+  currentScene = n;
+  // update top dots: when at scene1 -> dot1 active, scene2->dot2 etc.
+  setDots(Math.max(0, n));
+  // hide answers for scene
+  const ans = document.getElementById('answers'+n);
+  if(ans) ans.classList.remove('show');
+}
+
+// fade to next scene (black fade)
+function fadeToScene(n){
+  fade.style.opacity = 1;
+  setTimeout(()=>{ playScene(n); fade.style.opacity = 0; }, 450);
+}
+
+/* initial state: hide scenes all */
+document.querySelectorAll('.scene').forEach(s=> s.style.display='none');
+
+/* Tap to start */
+tap.addEventListener('click', ()=>{
+  tap.style.display='none';
+  loader.style.display='flex';
+  ensureAudioCtx(); resumeAudioCtx();
+  playScene(0);
+  const v0 = document.getElementById('vid0');
+  v0.muted = false;
+  v0.oncanplay = ()=> loader.style.display='none';
+});
+
+/* On intro end -> go to scene 1 */
+document.getElementById('vid0').addEventListener('ended', ()=> fadeToScene(1));
+
+/* When question videos end -> reveal their answers */
+//document.getElementById('vid1').addEventListener('ended', ()=> { document.getElementById('answers1').classList.add('show'); });
+//document.getElementById('vid2').addEventListener('ended', ()=> { document.getElementById('answers2').classList.add('show'); });
+//document.getElementById('vid3').addEventListener('ended', ()=> { 
+
+
+// Replace your video.ended handlers with timed reveals
+setTimeout(()=> document.getElementById('answers1').classList.add('show'), 10000); // 10s after start
+setTimeout(()=> document.getElementById('answers2').classList.add('show'), 23000);
+setTimeout(()=> document.getElementById('answers3').classList.add('show'), 23000);
+
+
+
+
+
+
+  // capture last frame for results BG
+  try{
+    const v = document.getElementById('vid3');
+    const c = document.createElement('canvas');
+    c.width = v.videoWidth || window.innerWidth;
+    c.height = v.videoHeight || window.innerHeight;
+    const cx = c.getContext('2d');
+    cx.drawImage(v, 0, 0, c.width, c.height);
+    lastFrameDataUrl = c.toDataURL('image/png');
+  }catch(e){
+    lastFrameDataUrl = null;
+  }
+  document.getElementById('answers3').classList.add('show'); 
+});
+
+/* attach answer handlers (delegation) */
+document.querySelectorAll('.answers').forEach(group=>{
+  group.addEventListener('click', (ev)=>{
+    const btn = ev.target.closest('.answer-btn');
+    if(!btn) return;
+    const type = btn.dataset.type;
+    // animate pressed button (pop)
+    btn.style.animation = 'tapPop 260ms ease';
+    setTimeout(()=> btn.style.animation = '', 300);
+    // sound click
+    playClick();
+    // tally
+    if(type in scores) scores[type]++; else console.warn('Unknown answer type',type);
+    // keep others visible for 250ms then advance
+    setTimeout(()=>{
+      // hide answers of current scene
+      const answersEl = document.getElementById('answers'+currentScene);
+      if(answersEl) answersEl.classList.remove('show');
+      // determine next
+      if(currentScene === 1) fadeToScene(2);
+      else if(currentScene === 2) fadeToScene(3);
+      else if(currentScene === 3) showResults();
+      else console.warn('Answer clicked but currentScene=', currentScene);
+    }, 260);
+  });
+});
+
+/* Mute toggle */
+muteBtn.addEventListener('click', ()=>{
+  muted = !muted;
+  muteBtn.innerText = muted ? '🔇' : '🔊';
+  muteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+});
+
+/* ------------- Results ------------- */
+const resultsWrap = document.getElementById('resultsWrap');
+const bonkersImg = document.getElementById('bonkersImg');
+const resultTitle = document.getElementById('resultTitle');
+const resultText = document.getElementById('resultText');
+const playAgainBtn = document.getElementById('playAgain');
+
+function showResults(){
+  // pause any playing videos
+  document.querySelectorAll('.scene video').forEach(v=> v.pause());
+
+  // determine outcome
+  const {winner, maybe, disaster} = scores;
+  let outcome = 'tie';
+  if (winner>maybe && winner>disaster) outcome='winner';
+  else if (maybe>winner && maybe>disaster) outcome='maybe';
+  else if (disaster>winner && disaster>maybe) outcome='disaster';
+
+  if(outcome==='winner'){
+    resultTitle.innerText = "Winner’s Whistle";
+    resultText.innerText = "You guided Bonkers like a true pro. Mascot mission: complete!";
+    bonkersImg.src = 'BonkersPoses_Victory.png';
+  } else if(outcome==='maybe'){
+    resultTitle.innerText = "Master of Maybe";
+    resultText.innerText = "Not terrible. Not great. But Bonkers made it out mostly okay.";
+    bonkersImg.src = 'BonkersPoses_Confused.png';
+  } else if(outcome==='disaster'){
+    resultTitle.innerText = "Captain Chaos";
+    resultText.innerText = "You brought maximum mayhem. Bonkers never stood a chance—and somehow loved it.";
+    bonkersImg.src = 'BonkersPoses_Chaos.png';
+  } else {
+    resultTitle.innerText = "Triple Threat of Confusion";
+    resultText.innerText = "Wisdom, wobble, and wildness in perfect balance. Bonkers is both confused and impressed.";
+    bonkersImg.src = 'BonkersPoses_Neutral.png';
+  }
+
+  // background: prefer last frame capture, fallback to BonkersBG.png
+  const bg = document.getElementById('resultsBg');
+  if(lastFrameDataUrl){
+    bg.style.backgroundImage = `url(${lastFrameDataUrl})`;
+    bg.style.filter = 'blur(6px) brightness(0.36)';
+  } else {
+    bg.style.backgroundImage = `url('BonkersBG.png')`;
+    bg.style.filter = 'blur(6px) brightness(0.36)';
+  }
+
+  // show results
+  resultsWrap.style.display = 'flex';
+  resultsWrap.setAttribute('aria-hidden','false');
+
+  // animate card
+  const card = document.getElementById('resultCard');
+  card.style.transition='none'; card.style.opacity=0; card.style.transform='translateY(10px) scale(0.98)';
+  setTimeout(()=>{ card.style.transition='all .6s cubic-bezier(.2,.9,.2,1)'; card.style.transform='translateY(0) scale(1)'; card.style.opacity=1; }, 120);
+
+  // bonkers animation per outcome + confetti + stinger
+  bonkersImg.style.opacity = 0; bonkersImg.style.transform = 'translateY(24px) scale(.9) rotate(0deg)';
+  setTimeout(()=> bonkersImg.style.opacity = 1, 260);
+
+  if(outcome==='winner'){
+    bonkersImg.style.right = '6%'; bonkersImg.style.left = '';
+    bonkersImg.animate([{ transform: 'translateY(160px) scale(0.6)' }, { transform: 'translateY(-22px) scale(1.06)' }, { transform: 'translateY(0px) scale(1)' }], { duration:820, easing:'cubic-bezier(.2,.9,.2,1)'});
+    spawnConfetti(180); playStinger('winner');
+  } else if(outcome==='maybe'){
+    bonkersImg.style.left = '6%'; bonkersImg.style.right = '';
+    bonkersImg.animate([{ transform:'translateX(-40vw) scale(.9)' }, { transform:'translateX(18px) rotate(-6deg) scale(1)' }, { transform:'translateX(0) rotate(0) scale(1)' }], { duration:700, easing:'ease-out'});
+    spawnConfetti(28); playStinger('maybe');
+  } else if(outcome==='disaster'){
+    bonkersImg.style.right = '6%'; bonkersImg.style.left = '';
+    bonkersImg.animate([{ transform:'rotate(540deg) scale(.28) translateY(-40px)' }, { transform:'rotate(-16deg) scale(1.02)' }, { transform:'rotate(0deg) scale(1)' }], { duration:950, easing:'cubic-bezier(.2,.9,.2,1)'});
+    spawnConfetti(140); playStinger('disaster');
+    document.body.animate([{ transform: 'translateX(0)' },{ transform: 'translateX(-8px)' },{ transform: 'translateX(6px)' },{ transform: 'translateX(-4px)' },{ transform: 'translateX(0)' }], { duration:760, easing:'ease-in-out' });
+  } else {
+    spawnConfetti(40); playStinger('maybe');
+  }
+}
+
+/* play again */
+document.getElementById('playAgain').addEventListener('click', ()=>{
+  scores = { winner:0, maybe:0, disaster:0 };
+  lastFrameDataUrl = null;
+  document.getElementById('resultsWrap').style.display='none';
+  document.getElementById('bonkersImg').style.left = ''; document.getElementById('bonkersImg').style.right='6%';
+  setDots(0);
+  playScene(0);
+});
+
+/* small accessibility: space starts if tap visible */
+window.addEventListener('keydown', (e)=>{
+  if(e.key === ' '){
+    const tapVis = window.getComputedStyle(tap).display !== 'none';
+    if(tapVis) tap.click();
+  }
+});
+
+/* init dots */
+setDots(0);
+</script>
+</body>
+</html>
