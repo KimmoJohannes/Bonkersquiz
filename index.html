@@ -98,9 +98,15 @@
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  border: none;
+  background: transparent;   /* ✅ add this */
   z-index: 0;
 }
+
+.scene iframe {
+  z-index: 1;
+}
+
 
 </style>
 </head>
@@ -123,15 +129,37 @@
 
 <!-- Scenes (multiple video tags) -->
 <div id="scene0" class="scene">
-  <iframe id="vid0"
-  src="https://player.vimeo.com/video/1135059965?background=1&autoplay=1&muted=0&playsinline=1"
+
+<!-- Old -->
+<!-- <video id="vid0" src="00_Bonkers_intro.mp4" preload="auto"></video> -->
+
+<!-- New Vimeo embed -->
+ 
+<iframe
+  id="vid0"
+  src="https://player.vimeo.com/video/1135059965?h=9eecb3c5d0&autoplay=0&muted=1&loop=0&playsinline=1&controls=0&transparent=0&"
   frameborder="0"
   allow="autoplay; fullscreen; picture-in-picture"
   allowfullscreen
   class="vimeoVid">
-</iframe></div>
+</iframe>
+
+
+</div>
+
 <div id="scene1" class="scene">
-  <video id="vid1" src="01_kysymys.mp4" preload="auto"></video>
+
+<!-- Old -->
+<!-- <video id="vid1" src="01_kysymys.mp4" preload="auto"></video> -->
+<iframe
+  id="vid1"
+  src="https://player.vimeo.com/video/1135060348?h=9eecb3c5d0&autoplay=0&muted=1&loop=0&playsinline=1&controls=0"
+  frameborder="0"
+  allow="autoplay; fullscreen; picture-in-picture"
+  allowfullscreen
+  class="vimeoVid">
+</iframe>
+  
   <div id="answers1" class="answers">
     <div class="answer-btn wonky" data-type="winner">Wave my hand to fans</div>
     <div class="answer-btn wonky" data-type="maybe">Don’t bother the crowd</div>
@@ -140,7 +168,16 @@
 </div>
 
 <div id="scene2" class="scene">
-  <video id="vid2" src="02_kysymys.mp4" preload="auto"></video>
+  <!-- <video id="vid2" src="02_kysymys.mp4" preload="auto"></video> -->
+<iframe
+  id="vid2"
+  src="https://player.vimeo.com/video/1135062079?&h=9eecb3c5d0&autoplay=0&muted=1&loop=0&playsinline=1&controls=0"
+  frameborder="0"
+  allow="autoplay; fullscreen; picture-in-picture"
+  allowfullscreen
+  class="vimeoVid">
+</iframe>
+
   <div id="answers2" class="answers">
     <div class="answer-btn wonky" data-type="maybe">Try on someone’s jersey</div>
     <div class="answer-btn wonky" data-type="disaster">Challenge a bench to arm wrestling</div>
@@ -149,7 +186,16 @@
 </div>
 
 <div id="scene3" class="scene">
-  <video id="vid3" src="03_kysymys.mp4" preload="auto"></video>
+  <!-- <video id="vid3" src="03_kysymys.mp4" preload="auto"></video> -->
+<iframe
+  id="vid3"
+  src="https://player.vimeo.com/video/1135062356?&h=9eecb3c5d0&autoplay=0&muted=1&loop=0&playsinline=1&controls=0"
+  frameborder="0"
+  allow="autoplay; fullscreen; picture-in-picture"
+  allowfullscreen
+  class="vimeoVid">
+</iframe>
+
   <div id="answers3" class="answers">
     <div class="answer-btn wonky" data-type="disaster">Unplug random cables</div>
     <div class="answer-btn wonky" data-type="winner">Wait for your cue from the director</div>
@@ -180,7 +226,34 @@
   <img id="bonkersImg" class="bonkers" src="BonkersPoses_Neutral.png" alt="Bonkers">
 </div>
 
+<script src="https://player.vimeo.com/api/player.js"></script>
+
+
 <script>
+
+// Vimeo Player API setup
+function getVimeoPlayer(id) {
+  return new Vimeo.Player(document.getElementById(id));
+}
+
+// unmute all players after user interaction
+function unmuteAllVimeo(){
+  Object.values(vimeoPlayers).forEach(p=>{
+    try{ p.setVolume(1); }catch(e){}
+  });
+}
+
+
+
+const vimeoPlayers = {
+  0: getVimeoPlayer('vid0'),
+  1: getVimeoPlayer('vid1'),
+  2: getVimeoPlayer('vid2'),
+  3: getVimeoPlayer('vid3')
+};
+
+
+
 /* ------------- State & elements ------------- */
 let currentScene = -1; // no scene shown yet
 let scores = { winner:0, maybe:0, disaster:0 };
@@ -299,66 +372,90 @@ const scenes = [0,1,2,3];
 let lastFrameDataUrl = null;
 
 // helper to show a scene and play its video
-function playScene(n){
-  // clamp
-  if(n < 0) n = 0;
-  if(n > 3) n = 3;
-  // hide results if visible
-  document.getElementById('resultsWrap').style.display='none';
-  // hide other scenes
-  document.querySelectorAll('.scene').forEach(s=> s.style.display='none');
-  const sc = document.getElementById('scene'+n);
+// --- Play Scene function for Vimeo embeds ---
+function playScene(n) {
+  // hide all scenes first
+  document.querySelectorAll('.scene').forEach(s => s.style.display = 'none');
+  const sc = document.getElementById('scene' + n);
   sc.style.display = 'flex';
-  const vid = document.getElementById('vid'+n);
-  vid.currentTime = 0;
-  // clear any filters
-  vid.style.filter = '';
-  vid.play().catch(()=>{});
+
+  // pause other Vimeo videos
+  Object.values(vimeoPlayers).forEach(p => p.pause());
+
+  // play current one
+  vimeoPlayers[n].setCurrentTime(0);
+  vimeoPlayers[n].play();
+
   currentScene = n;
-  // update top dots: when at scene1 -> dot1 active, scene2->dot2 etc.
   setDots(Math.max(0, n));
-  // hide answers for scene
-  const ans = document.getElementById('answers'+n);
-  if(ans) ans.classList.remove('show');
+
+  // hide any visible answers
+  const ans = document.getElementById('answers' + n);
+  if (ans) ans.classList.remove('show');
+
+  // timed reveal for question scenes
+  if (n > 0 && n <= 3) {
+    setTimeout(() => {
+      const answers = document.getElementById('answers' + n);
+      if (answers) answers.classList.add('show');
+    }, (sceneDurations[n] - 2) * 1000); // show a bit before end
+  }
+
+  // auto-progress to next scene or show results
+  if (n < 3) {
+    setTimeout(() => fadeToScene(n + 1), sceneDurations[n] * 1000);
+  } else {
+    // last scene → results
+    setTimeout(() => showResults(), sceneDurations[n] * 1000);
+  }
 }
 
+
 // fade to next scene (black fade)
-function fadeToScene(n){
+function fadeToScene(n) {
   fade.style.opacity = 1;
-  setTimeout(()=>{ playScene(n); fade.style.opacity = 0; }, 450);
+  setTimeout(() => {
+    playScene(n);
+    fade.style.opacity = 0;
+  }, 450);
 }
+
 
 /* initial state: hide scenes all */
 document.querySelectorAll('.scene').forEach(s=> s.style.display='none');
 
-/* Tap to start */
-tap.addEventListener('click', ()=>{
-  tap.style.display='none';
-  loader.style.display='flex';
-  ensureAudioCtx(); resumeAudioCtx();
-  playScene(0);
-  const v0 = document.getElementById('vid0');
-  v0.muted = false;
-  v0.oncanplay = ()=> loader.style.display='none';
+// --- Tap to Start ---
+tap.addEventListener('click', () => {
+  tap.style.display = 'none';
+  loader.style.display = 'flex';
+  ensureAudioCtx(); 
+  resumeAudioCtx();
+
+  // reset state and play intro Vimeo video
+  Object.values(vimeoPlayers).forEach(p => p.pause());
+  vimeoPlayers[0].setCurrentTime(0);
+  vimeoPlayers[0].play();
+  unmuteAllVimeo(); // 🔈 allow audio after user tap
+
+  currentScene = 0;
+  setDots(0);
+  loader.style.display = 'none';
 });
+
 
 /* On intro end -> go to scene 1 */
 document.getElementById('vid0').addEventListener('ended', ()=> fadeToScene(1));
 
 /* When question videos end -> reveal their answers */
-//document.getElementById('vid1').addEventListener('ended', ()=> { document.getElementById('answers1').classList.add('show'); });
-//document.getElementById('vid2').addEventListener('ended', ()=> { document.getElementById('answers2').classList.add('show'); });
-//document.getElementById('vid3').addEventListener('ended', ()=> { 
+document.getElementById('vid1').addEventListener('ended', ()=> { document.getElementById('answers1').classList.add('show'); });
+document.getElementById('vid2').addEventListener('ended', ()=> { document.getElementById('answers2').classList.add('show'); });
+document.getElementById('vid3').addEventListener('ended', ()=> { 
 
 
 // Replace your video.ended handlers with timed reveals
 setTimeout(()=> document.getElementById('answers1').classList.add('show'), 10000); // 10s after start
 setTimeout(()=> document.getElementById('answers2').classList.add('show'), 23000);
 setTimeout(()=> document.getElementById('answers3').classList.add('show'), 23000);
-
-
-
-
 
 
   // capture last frame for results BG
