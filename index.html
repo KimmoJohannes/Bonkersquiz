@@ -99,19 +99,30 @@
   width: 100%;
   height: 100%;
   border: none;
-  background: transparent;   /* ✅ add this */
-  z-index: 0;
+  background: transparent;
+  z-index: 1000 !important;
+  pointer-events: auto; /* hides Vimeo UI but keeps video visible */
 }
+
+
 
 .scene iframe {
   z-index: 1;
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
 }
+
+
 
 
 </style>
 </head>
 <body>
 
+
+
+ 
 <!-- Topbar -->
 <div id="topbar">
   <div class="dots">
@@ -128,8 +139,9 @@
 <div id="fadeLayer"></div>
 
 <!-- Scenes (multiple video tags) -->
-<div id="scene0" class="scene">
 
+<div id="scene0" class="scene">
+  
 <!-- Old -->
 <!-- <video id="vid0" src="00_Bonkers_intro.mp4" preload="auto"></video> -->
 
@@ -137,13 +149,12 @@
  
 <iframe
   id="vid0"
-  src="https://player.vimeo.com/video/1135059965?h=9eecb3c5d0&autoplay=0&muted=1&loop=0&playsinline=1&controls=0&transparent=0&"
+  src="https://player.vimeo.com/video/1135059965?autoplay=0&muted=1&loop=0&playsinline=1&controls=0&title=1"
   frameborder="0"
-  allow="autoplay; fullscreen; picture-in-picture"
+  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
   allowfullscreen
   class="vimeoVid">
 </iframe>
-
 
 </div>
 
@@ -153,12 +164,14 @@
 <!-- <video id="vid1" src="01_kysymys.mp4" preload="auto"></video> -->
 <iframe
   id="vid1"
-  src="https://player.vimeo.com/video/1135060348?h=9eecb3c5d0&autoplay=0&muted=1&loop=0&playsinline=1&controls=0"
+  src="https://player.vimeo.com/video/1135060348?autoplay=0&muted=1&loop=0&playsinline=1&controls=0"
   frameborder="0"
-  allow="autoplay; fullscreen; picture-in-picture"
+  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
   allowfullscreen
   class="vimeoVid">
 </iframe>
+
+
   
   <div id="answers1" class="answers">
     <div class="answer-btn wonky" data-type="winner">Wave my hand to fans</div>
@@ -171,12 +184,13 @@
   <!-- <video id="vid2" src="02_kysymys.mp4" preload="auto"></video> -->
 <iframe
   id="vid2"
-  src="https://player.vimeo.com/video/1135062079?&h=9eecb3c5d0&autoplay=0&muted=1&loop=0&playsinline=1&controls=0"
+  src="https://player.vimeo.com/video/1135062079?autoplay=0&muted=1&loop=0&playsinline=1&controls=0"
   frameborder="0"
-  allow="autoplay; fullscreen; picture-in-picture"
+  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
   allowfullscreen
   class="vimeoVid">
 </iframe>
+
 
   <div id="answers2" class="answers">
     <div class="answer-btn wonky" data-type="maybe">Try on someone’s jersey</div>
@@ -189,12 +203,13 @@
   <!-- <video id="vid3" src="03_kysymys.mp4" preload="auto"></video> -->
 <iframe
   id="vid3"
-  src="https://player.vimeo.com/video/1135062356?&h=9eecb3c5d0&autoplay=0&muted=1&loop=0&playsinline=1&controls=0"
+  src="https://player.vimeo.com/video/1135062356?autoplay=0&muted=1&loop=0&playsinline=1&controls=0"
   frameborder="0"
-  allow="autoplay; fullscreen; picture-in-picture"
+  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
   allowfullscreen
   class="vimeoVid">
 </iframe>
+
 
   <div id="answers3" class="answers">
     <div class="answer-btn wonky" data-type="disaster">Unplug random cables</div>
@@ -228,7 +243,6 @@
 
 <script src="https://player.vimeo.com/api/player.js"></script>
 
-
 <script>
 
 // Vimeo Player API setup
@@ -243,14 +257,38 @@ function unmuteAllVimeo(){
   });
 }
 
-
-
 const vimeoPlayers = {
   0: getVimeoPlayer('vid0'),
   1: getVimeoPlayer('vid1'),
   2: getVimeoPlayer('vid2'),
   3: getVimeoPlayer('vid3')
 };
+
+
+// Improved iframe reflow helper — forces the browser to repaint the iframe
+function refreshVimeoFrame(id){
+  const iframe = document.getElementById(id);
+  if(!iframe) return;
+
+  // Make sure the iframe is using the intended layout display (do not override CSS display permanently)
+  iframe.style.visibility = 'hidden';    // temporarily hide to avoid flicker
+  iframe.style.display = 'block';        // ensure not "none"
+
+  // Force a synchronous reflow (read a layout property)
+  // eslint-disable-next-line no-unused-expressions
+  iframe.offsetHeight;
+
+  // small delay to allow the player to present its first frame
+  setTimeout(()=>{
+    iframe.style.visibility = 'visible';
+    // minor GPU hint to promote repaint if needed
+    iframe.style.transform = 'translateZ(0)';
+    // remove any inline display override after a short delay so CSS rules can apply normally later
+    setTimeout(()=> {
+      iframe.style.display = ''; // restore to stylesheet-defined display
+    }, 300);
+  }, 120);
+}
 
 
 
@@ -380,11 +418,20 @@ function playScene(n) {
   sc.style.display = 'flex';
 
   // pause other Vimeo videos
-  Object.values(vimeoPlayers).forEach(p => p.pause());
+  
+Object.values(vimeoPlayers).forEach(p => p.pause());
 
-  // play current one
-  vimeoPlayers[n].setCurrentTime(0);
-  vimeoPlayers[n].play();
+// play current one and refresh the iframe after playback actually starts
+vimeoPlayers[n].setCurrentTime(0);
+vimeoPlayers[n].play().then(() => {
+  // small safety delay then reflow
+  setTimeout(()=> refreshVimeoFrame('vid' + n), 80);
+}).catch((err) => {
+  // if play promise rejected (autoplay policies) attempt to refresh anyway
+  console.warn('Vimeo play() rejected:', err);
+  setTimeout(()=> refreshVimeoFrame('vid' + n), 120);
+});
+
 
   currentScene = n;
   setDots(Math.max(0, n));
@@ -400,6 +447,16 @@ function playScene(n) {
       if (answers) answers.classList.add('show');
     }, (sceneDurations[n] - 2) * 1000); // show a bit before end
   }
+
+// helper to reflow vimeo iframe when scene becomes visible
+function refreshVimeoFrame(id){
+  const iframe = document.getElementById(id);
+  if (!iframe) return;
+  // toggling display forces browser to re-render the video layer
+  iframe.style.display = 'none';
+  setTimeout(()=> iframe.style.display = 'block', 50);
+}
+
 
   // auto-progress to next scene or show results
   if (n < 3) {
