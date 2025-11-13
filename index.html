@@ -15,18 +15,39 @@
   html,body{height:100%;margin:0;background:#000;font-family:Fredoka, Arial, sans-serif;overflow:hidden}
 
   /* Topbar */
-  #topbar { position:absolute; top:8px; left:12px; right:12px; z-index:120; display:flex; justify-content:space-between; align-items:center; pointer-events:none; }
+  #topbar { position:absolute; top:8px; left:12px; right:12px; z-index:120; display:flex; justify-content:space-between; align-items:center; pointer-events:none;}
   .dots { display:flex; gap:8px; pointer-events:auto; }
   .dot { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.18); }
   .dot.active { background:var(--ui-yellow); box-shadow:0 6px 18px rgba(0,0,0,0.4); }
   #muteBtn { pointer-events:auto; background: rgba(0,0,0,0.45); color:white; border:none; padding:8px; border-radius:8px; cursor:pointer; font-size:14px; }
 
   /* Scenes */
-  .scene{ width:100%; height:100vh; position:relative; display:none; justify-content:center; align-items:center; overflow:hidden; }
+  .scene {
+  width:100%;
+  height:100%;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 500;
+}
+
+.scene.active {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  
+}
+
+
   video{ width:100%; height:100vh; object-fit:cover; display:block; }
 
   /* overlays */
-  #tapToStart,#loader{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:200; color:white; text-align:center; }
+  #tapToStart,#loader{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:400; color:white; text-align:center; }
   #tapToStart { background: rgba(0,0,0,0.86); font-size:1.9rem; cursor:pointer; }
   #loader { background: rgba(0,0,0,0.6); font-size:1.2rem; display:none; }
 
@@ -34,14 +55,30 @@
   #fadeLayer{ position:absolute; inset:0; background:black; z-index:190; transition:opacity 0.45s ease; pointer-events:none; opacity:0; }
 
   /* Answer buttons group */
-  .answers { position:absolute; left:50%; transform:translateX(-50%); bottom:9%; width:86%; max-width:420px; display:flex; flex-direction:column; gap:12px; z-index:180; opacity:0; pointer-events:none; }
-  .answers.show { opacity:1; pointer-events:auto; transition:opacity .35s ease; }
+  .answers { 
+    position:absolute; 
+    left:50%; 
+    transform:translateX(-50%); 
+    bottom:9%; 
+    width:86%; 
+    max-width:420px; 
+    display:flex; 
+    flex-direction:column; 
+    gap:12px; 
+    z-index:900; 
+    opacity:0; 
+    pointer-events:none; }
+
+  .answers.show { 
+    opacity:1; 
+    pointer-events:auto; 
+    transition:opacity .35s ease; }
 
   .answer-btn {
     background: rgba(255,255,255,0.96); border:3px solid #111; border-radius:18px;
     padding:14px 18px; font-size:1.05rem; text-align:center; cursor:pointer;
     box-shadow: 0 4px 12px rgba(0,0,0,0.25); transition: transform .12s ease, box-shadow .15s ease;
-    user-select:none; transform-origin:center;
+    user-select:none; transform-origin:center; z-index:700;
   }
 
   /* Desktop hover wonky */
@@ -71,19 +108,22 @@
   @keyframes fadeSlideUp { from { transform: translateY(18px); opacity:0; } to { transform: translateY(0); opacity:1; } }
 
   /* Results screen */
-  #resultsWrap { position:absolute; inset:0; display:none; z-index:300; align-items:center; justify-content:center; }
-  #resultsBg { position:absolute; inset:0; background-size:cover; background-position:center; filter: blur(6px) brightness(0.36); transform:scale(1.03); transition:filter .4s ease, transform .8s ease; }
-  #confettiCanvas { position:absolute; inset:0; z-index:305; pointer-events:none; }
+  #resultsWrap { position:absolute; inset:0; display:none; z-index:750; align-items:center; justify-content:center; width:100%; height: 100%; }
+  #resultsBg { position:absolute; inset:0; display:flex;  background-size:cover; background-position:center; filter: blur(6px) brightness(0.36); transform:scale(1.03); transition:filter .4s ease, transform .8s ease;}
+  #confettiCanvas { position:absolute; width:50%; inset:0; pointer-events:none}
 
-  .result-card { position:relative; z-index:310; width:min(760px,92%); max-width:900px; display:flex; gap:24px; align-items:center; justify-content:center; padding:26px; border-radius:18px; background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); box-shadow: 0 20px 60px rgba(0,0,0,0.6); backdrop-filter: blur(8px) saturate(1.1); border:1px solid rgba(255,255,255,0.06); color:white; }
+  .result-card { position:relative; z-index:100; width:min(760px,92%); max-width:900px; display:flex; gap:24px; align-items:center; justify-content:center; padding:26px; border-radius:18px; background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); box-shadow: 0 20px 60px rgba(0,0,0,0.6); backdrop-filter: blur(8px) saturate(1.1); border:1px solid rgba(255,255,255,0.06); color:white; }
   .result-left { width:40%; display:flex; flex-direction:column; align-items:center; gap:8px; }
   .result-left img.logo { width:110px; height:auto; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.45)); }
   .result-right { width:60%; text-align:left; padding:6px 6px; }
-  #resultTitle { font-size:2rem; margin:0 0 6px 0; }
+  #resultTitle { font-size:2rem; margin:0 0 6px 0; display:flex;}
   #resultText { margin:0; font-size:1.05rem; opacity:0.95; }
-  .bonkers { position:absolute; z-index:330; width:34%; max-width:320px; right:6%; bottom:6%; transform-origin:center bottom; pointer-events:none; }
 
-  #playAgain { appearance:none; border:none; margin-top:14px; background:linear-gradient(90deg,var(--ui-blue), #0b63d9); color:white; padding:12px 22px; border-radius:12px; font-weight:700; cursor:pointer; box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
+
+  
+  .bonkers { position:absolute;  width:34%; max-width:320px; right:6%; bottom:6%; transform-origin:center bottom; pointer-events:none; z-index: 900; }
+
+  #playAgain { appearance:none;  border:none; margin-top:14px; background:linear-gradient(90deg,var(--ui-blue), #0b63d9); color:white; padding:12px 22px; border-radius:12px; font-weight:700; cursor:pointer; box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
 
   @media (max-width:700px){
     .result-card { flex-direction:column; padding:18px; gap:12px; }
@@ -92,35 +132,34 @@
     #resultTitle{ font-size:1.4rem; }
   }
 
-  .vimeoVid {
+.vimeoVid
+{
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-  background: transparent;
-  z-index: 1000 !important;
-  pointer-events: auto; /* hides Vimeo UI but keeps video visible */
-}
-
-
-
+    
+  }
 .scene iframe {
-  z-index: 1;
   position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  top: 0%;
+  height: 100vh;
+  width: 177.78vh;        /* 16:9 ratio */
+  min-width: 100vw;
+  border: none;
+  background: #000000;
+  z-index: 200;
+  pointer-events: auto;
 }
 
 
 
+body {
+    background-image: url('BonkersPoses_Chaos.png');
+    background-repeat: no-repeat;
+    background-size: cover; /* Optional: stretch the image to cover the entire background */
+  }
 
 </style>
 </head>
 <body>
-
-
 
  
 <!-- Topbar -->
@@ -140,16 +179,16 @@
 
 <!-- Scenes (multiple video tags) -->
 
+
 <div id="scene0" class="scene">
   
 <!-- Old -->
 <!-- <video id="vid0" src="00_Bonkers_intro.mp4" preload="auto"></video> -->
 
 <!-- New Vimeo embed -->
- 
 <iframe
   id="vid0"
-  src="https://player.vimeo.com/video/1135059965?autoplay=0&muted=1&loop=0&playsinline=1&controls=0&title=1"
+  src="https://player.vimeo.com/video/1135059965?autoplay=0&muted=1&loop=0&playsinline=1&controls=0"
   frameborder="0"
   allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
   allowfullscreen
@@ -171,8 +210,6 @@
   class="vimeoVid">
 </iframe>
 
-
-  
   <div id="answers1" class="answers">
     <div class="answer-btn wonky" data-type="winner">Wave my hand to fans</div>
     <div class="answer-btn wonky" data-type="maybe">Don’t bother the crowd</div>
@@ -190,8 +227,6 @@
   allowfullscreen
   class="vimeoVid">
 </iframe>
-
-
   <div id="answers2" class="answers">
     <div class="answer-btn wonky" data-type="maybe">Try on someone’s jersey</div>
     <div class="answer-btn wonky" data-type="disaster">Challenge a bench to arm wrestling</div>
@@ -209,7 +244,6 @@
   allowfullscreen
   class="vimeoVid">
 </iframe>
-
 
   <div id="answers3" class="answers">
     <div class="answer-btn wonky" data-type="disaster">Unplug random cables</div>
@@ -237,8 +271,9 @@
       <button id="playAgain">Play Again</button>
     </div>
   </div>
-
+  
   <img id="bonkersImg" class="bonkers" src="BonkersPoses_Neutral.png" alt="Bonkers">
+
 </div>
 
 <script src="https://player.vimeo.com/api/player.js"></script>
@@ -370,6 +405,8 @@ function resizeCanvas(){ confettiCanvas.width = window.innerWidth; confettiCanva
 resizeCanvas(); window.addEventListener('resize', resizeCanvas);
 
 let confettiParticles = [], confettiAnimating=false;
+confettiCanvas.style.zIndex = 90; // keep it under video normally
+
 function spawnConfetti(count=80){
   const colors = ['#FFD84A','#FF6B6B','#4AE8FF','#9BFF7A','#FFD3A5','#FFFFFF'];
   for(let i=0;i<count;i++){
@@ -411,59 +448,99 @@ let lastFrameDataUrl = null;
 
 // helper to show a scene and play its video
 // --- Play Scene function for Vimeo embeds ---
+
 function playScene(n) {
+  
+  // remove any old event listeners before reusing player
+  vimeoPlayers[n].off('timeupdate');
+
+  
   // hide all scenes first
-  document.querySelectorAll('.scene').forEach(s => s.style.display = 'none');
-  const sc = document.getElementById('scene' + n);
-  sc.style.display = 'flex';
+  document.querySelectorAll(".scene").forEach((s) => s.classList.remove("active"));
+
+  const sc = document.getElementById("scene" + n);
+  sc.classList.add("active"); // show current
 
   // pause other Vimeo videos
-  
-Object.values(vimeoPlayers).forEach(p => p.pause());
+  Object.values(vimeoPlayers).forEach((p) => p.pause());
 
-// play current one and refresh the iframe after playback actually starts
-vimeoPlayers[n].setCurrentTime(0);
-vimeoPlayers[n].play().then(() => {
-  // small safety delay then reflow
-  setTimeout(()=> refreshVimeoFrame('vid' + n), 80);
-}).catch((err) => {
-  // if play promise rejected (autoplay policies) attempt to refresh anyway
-  console.warn('Vimeo play() rejected:', err);
-  setTimeout(()=> refreshVimeoFrame('vid' + n), 120);
-});
-
+  // play the current one
+  vimeoPlayers[n].setCurrentTime(0);
+  vimeoPlayers[n]
+    .play()
+    .catch((err) => console.warn("Vimeo play() rejected:", err));
 
   currentScene = n;
   setDots(Math.max(0, n));
 
-  // hide any visible answers
-  const ans = document.getElementById('answers' + n);
-  if (ans) ans.classList.remove('show');
 
-  // timed reveal for question scenes
-  if (n > 0 && n <= 3) {
-    setTimeout(() => {
-      const answers = document.getElementById('answers' + n);
-      if (answers) answers.classList.add('show');
-    }, (sceneDurations[n] - 2) * 1000); // show a bit before end
-  }
+  // --- Timed reveal & pause before end ---
+if (n === 0) {
+  vimeoPlayers[0].off("timeupdate");
+  let endedEarly = false;
 
-// helper to reflow vimeo iframe when scene becomes visible
-function refreshVimeoFrame(id){
-  const iframe = document.getElementById(id);
-  if (!iframe) return;
-  // toggling display forces browser to re-render the video layer
-  iframe.style.display = 'none';
-  setTimeout(()=> iframe.style.display = 'block', 50);
+  // 🕐 Force player to fully initialize before playing
+  vimeoPlayers[0].ready().then(() => {
+    return vimeoPlayers[0].getDuration();
+  }).then((duration) => {
+    // start video only after duration is known
+    vimeoPlayers[0].setCurrentTime(0);
+    vimeoPlayers[0].play();
+
+    const nearEnd = Math.max(0, duration - 0.2);
+
+    const checkEnd = () => {
+      if (endedEarly) return;
+      vimeoPlayers[0].getCurrentTime().then((t) => {
+        if (t >= nearEnd) {
+          endedEarly = true;
+          vimeoPlayers[0].off("timeupdate");
+          vimeoPlayers[0].pause();
+          setTimeout(() => fadeToScene(1), 400);
+        }
+      });
+    };
+
+    vimeoPlayers[0].on("timeupdate", checkEnd);
+    const interval = setInterval(() => {
+      if (endedEarly) clearInterval(interval);
+      else checkEnd();
+    }, 250);
+  });
 }
 
-
-  // auto-progress to next scene or show results
-  if (n < 3) {
-    setTimeout(() => fadeToScene(n + 1), sceneDurations[n] * 1000);
-  } else {
-    // last scene → results
-    setTimeout(() => showResults(), sceneDurations[n] * 1000);
+  if (n > 0 && n < 3) {
+    // normal question scenes
+    vimeoPlayers[n].getDuration().then((duration) => {
+      const revealTime = Math.max(0, duration - 0.15); // ≈1 s before end
+      vimeoPlayers[n].off("timeupdate");
+      vimeoPlayers[n].on("timeupdate", (data) => {
+        if (data.seconds >= revealTime) {
+          vimeoPlayers[n].off("timeupdate");
+          vimeoPlayers[n].pause(); // 🧠 stop before end frame
+          const answers = document.getElementById("answers" + n);
+          if (answers && !answers.classList.contains("show")) {
+            answers.classList.add("show");
+          }
+        }
+      });
+    });
+  } else if (n === 3) {
+    // last question scene — pause near end, then show results after click
+    vimeoPlayers[3].getDuration().then((duration) => {
+      const revealTime = Math.max(0, duration - 1.0);
+      vimeoPlayers[3].off("timeupdate");
+      vimeoPlayers[3].on("timeupdate", (data) => {
+        if (data.seconds >= revealTime) {
+          vimeoPlayers[3].off("timeupdate");
+          vimeoPlayers[3].pause();
+          const answers = document.getElementById("answers3");
+          if (answers && !answers.classList.contains("show")) {
+            answers.classList.add("show");
+          }
+        }
+      });
+    });
   }
 }
 
@@ -477,58 +554,85 @@ function fadeToScene(n) {
   }, 450);
 }
 
+tap.addEventListener("click", async () => {
+  tap.style.display = "none";
+  loader.style.display = "flex";
 
-/* initial state: hide scenes all */
-document.querySelectorAll('.scene').forEach(s=> s.style.display='none');
-
-// --- Tap to Start ---
-tap.addEventListener('click', () => {
-  tap.style.display = 'none';
-  loader.style.display = 'flex';
-  ensureAudioCtx(); 
+  ensureAudioCtx();
   resumeAudioCtx();
 
-  // reset state and play intro Vimeo video
-  Object.values(vimeoPlayers).forEach(p => p.pause());
-  vimeoPlayers[0].setCurrentTime(0);
-  vimeoPlayers[0].play();
-  unmuteAllVimeo(); // 🔈 allow audio after user tap
+  // Make sure first scene is visible before starting playback
+  document.querySelectorAll(".scene").forEach((s) => s.classList.remove("active"));
+  const firstScene = document.getElementById("scene0");
+  firstScene.classList.add("active");
 
+  Object.values(vimeoPlayers).forEach((p) => p.pause());
+  const introIframe = document.getElementById("vid0");
+  introIframe.style.visibility = "visible";
+  introIframe.style.display = "block";
+  introIframe.offsetHeight; // force reflow
+
+  unmuteAllVimeo(); // allow audio after user tap
+
+  // --- 🧠 Preload the Vimeo intro to wake up the player ---
+  try {
+    await vimeoPlayers[0].play();
+    await vimeoPlayers[0].pause();
+  } catch (e) {
+    console.warn("Vimeo preload failed:", e);
+  }
+
+  // --- ✅ Now run your actual scene logic ---
   currentScene = 0;
   setDots(0);
-  loader.style.display = 'none';
+  loader.style.display = "none";
+
+  // Start intro AFTER preload completes
+  playScene(0);
 });
+
+
 
 
 /* On intro end -> go to scene 1 */
-document.getElementById('vid0').addEventListener('ended', ()=> fadeToScene(1));
 
-/* When question videos end -> reveal their answers */
-document.getElementById('vid1').addEventListener('ended', ()=> { document.getElementById('answers1').classList.add('show'); });
-document.getElementById('vid2').addEventListener('ended', ()=> { document.getElementById('answers2').classList.add('show'); });
-document.getElementById('vid3').addEventListener('ended', ()=> { 
+/* --- Vimeo "ended" event listeners --- */
+vimeoPlayers[0].on('ended', () => {
+  fadeToScene(1);
+});
 
+vimeoPlayers[1].on('ended', () => {
+  const ans = document.getElementById('answers1');
+  if (ans) ans.classList.add('show');
+});
 
-// Replace your video.ended handlers with timed reveals
-setTimeout(()=> document.getElementById('answers1').classList.add('show'), 10000); // 10s after start
-setTimeout(()=> document.getElementById('answers2').classList.add('show'), 23000);
-setTimeout(()=> document.getElementById('answers3').classList.add('show'), 23000);
+vimeoPlayers[2].on('ended', () => {
+  const ans = document.getElementById('answers2');
+  if (ans) ans.classList.add('show');
+});
 
+vimeoPlayers[3].on('ended', () => {
+  const ans = document.getElementById('answers3');
+  if (ans) ans.classList.add('show');
 
-  // capture last frame for results BG
-  try{
-    const v = document.getElementById('vid3');
+  // capture last frame for results background
+  try {
+    const iframe = document.getElementById('vid3');
     const c = document.createElement('canvas');
-    c.width = v.videoWidth || window.innerWidth;
-    c.height = v.videoHeight || window.innerHeight;
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
     const cx = c.getContext('2d');
-    cx.drawImage(v, 0, 0, c.width, c.height);
-    lastFrameDataUrl = c.toDataURL('image/png');
-  }catch(e){
+    // We can't actually draw cross-origin iframe content — keep safe fallback
+    lastFrameDataUrl = null;
+  } catch (e) {
     lastFrameDataUrl = null;
   }
-  document.getElementById('answers3').classList.add('show'); 
+
+  // proceed to results after short delay
+  setTimeout(() => showResults(), 500);
 });
+
+
 
 /* attach answer handlers (delegation) */
 document.querySelectorAll('.answers').forEach(group=>{
@@ -573,7 +677,11 @@ const playAgainBtn = document.getElementById('playAgain');
 
 function showResults(){
   // pause any playing videos
-  document.querySelectorAll('.scene video').forEach(v=> v.pause());
+
+  confettiCanvas.style.zIndex = 305; // lift it above background for confetti
+
+  Object.values(vimeoPlayers).forEach(p => p.pause());
+
 
   // determine outcome
   const {winner, maybe, disaster} = scores;
@@ -641,23 +749,11 @@ function showResults(){
   }
 }
 
-/* play again */
-document.getElementById('playAgain').addEventListener('click', ()=>{
-  scores = { winner:0, maybe:0, disaster:0 };
-  lastFrameDataUrl = null;
-  document.getElementById('resultsWrap').style.display='none';
-  document.getElementById('bonkersImg').style.left = ''; document.getElementById('bonkersImg').style.right='6%';
-  setDots(0);
-  playScene(0);
+document.getElementById('playAgain').addEventListener('click', () => {
+  window.location.reload();
 });
 
-/* small accessibility: space starts if tap visible */
-window.addEventListener('keydown', (e)=>{
-  if(e.key === ' '){
-    const tapVis = window.getComputedStyle(tap).display !== 'none';
-    if(tapVis) tap.click();
-  }
-});
+
 
 /* init dots */
 setDots(0);
