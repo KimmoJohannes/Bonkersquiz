@@ -528,7 +528,7 @@ if (n === 0) {
   } else if (n === 3) {
     // last question scene — pause near end, then show results after click
     vimeoPlayers[3].getDuration().then((duration) => {
-      const revealTime = Math.max(0, duration - 1.0);
+      const revealTime = Math.max(0, duration - 0.8);
       vimeoPlayers[3].off("timeupdate");
       vimeoPlayers[3].on("timeupdate", (data) => {
         if (data.seconds >= revealTime) {
